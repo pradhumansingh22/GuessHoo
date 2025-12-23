@@ -15,52 +15,62 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles, Users, Plus } from "lucide-react";
 import { useGameIdStore } from "@/stores/store";
+import { useWebSocket } from "@/lib/context/webSocketContext";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
   const { setGameId } = useGameIdStore();
-  
-
-  const [createName, setCreateName] = useState("");
-  const [joinName, setJoinName] = useState("");
+  const socket = useWebSocket();
   const [joinGameId, setJoinGameId] = useState("");
+  const [name, setName] = useState("");
 
-  const handleCreateGame = async(e: React.FormEvent) => {
+  const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[v0] Creating game with name:", createName);
+    console.log("[v0] Creating game with name:", name);
 
-    //send req to create a game
-    const res = await fetch("http://localhost:8080/game/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ player1Name: createName })
-    });
+    socket.sendMessage("create", { player1Name: name });
 
-    const data = await res.json();
-    setGameId(data.gameId);
-    // Handle create game logic here
+    //send req to create a game.
+    // const res = await fetch("http://localhost:8080/game/create", {
+    //   method: "POST",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //   },
+    //   body: JSON.stringify({ player1Name: name }),
+    // });
+
+    // const data = await res.json();
+    // if (data.success) {
+    //   setGameId(data.gameId);
+    // } else console.log("Some Error Occurred");
+
+    //console.log("Game Id = ", data.gameId);
     setCreateDialogOpen(false);
-    setCreateName("");
+    setName("");
   };
 
-  const handleJoinGame = (e: React.FormEvent) => {
+  const handleJoinGame = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log(
-      "[v0] Joining game with name:",
-      joinName,
-      "and game ID:",
-      joinGameId
+    console.log("[v0] Joining game with name:", name, "and game ID:");
+
+    const res = await fetch(
+      `http://localhost:8080/game/?gameId=${joinGameId}/join`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ player1Name: name }),
+      }
     );
 
-    
+    const data = await res.json();
+    if (data.success) setGameId(joinGameId);
     // Handle join game logic here
     setJoinDialogOpen(false);
-    setJoinName("");
-    setJoinGameId("");
+    setName("");
   };
 
   return (
@@ -228,8 +238,8 @@ export default function HomePage() {
               <Input
                 id="create-name"
                 placeholder="Enter your name..."
-                value={createName}
-                onChange={(e) => setCreateName(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="h-14 text-lg font-semibold border-2 border-primary/30 focus:border-primary rounded-xl"
                 required
               />
@@ -270,8 +280,8 @@ export default function HomePage() {
               <Input
                 id="join-name"
                 placeholder="Enter your name..."
-                value={joinName}
-                onChange={(e) => setJoinName(e.target.value)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
                 className="h-14 text-lg font-semibold border-2 border-primary/30 focus:border-primary rounded-xl"
                 required
               />
