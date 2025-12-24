@@ -14,39 +14,46 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sparkles, Users, Plus } from "lucide-react";
-import { useGameIdStore } from "@/stores/store";
+import { useGameIdStore, usePlayerStore } from "@/stores/store";
 import { useWebSocket } from "@/lib/context/webSocketContext";
+import { useRouter } from "next/navigation";
 
 export default function HomePage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [joinDialogOpen, setJoinDialogOpen] = useState(false);
-  const { setGameId } = useGameIdStore();
+  const { gameId, setGameId } = useGameIdStore();
+  const { setPlayer } = usePlayerStore();
   const socket = useWebSocket();
   const [joinGameId, setJoinGameId] = useState("");
   const [name, setName] = useState("");
+  const router = useRouter();
 
   const handleCreateGame = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("[v0] Creating game with name:", name);
 
-    socket.sendMessage("create", { player1Name: name });
+    // socket.sendMessage("create", { player1Name: name });
 
     //send req to create a game.
-    // const res = await fetch("http://localhost:8080/game/create", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({ player1Name: name }),
-    // });
+    const res = await fetch("http://localhost:8080/game/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ player1Name: name }),
+    });
 
-    // const data = await res.json();
-    // if (data.success) {
-    //   setGameId(data.gameId);
-    // } else console.log("Some Error Occurred");
+    const data = await res.json();
+    console.log("data:", data);
 
-    //console.log("Game Id = ", data.gameId);
+    if (data.success) {
+      setGameId(data.gameId);
+      setPlayer("player1", data.player1Id);
+      console.log("State Game id", gameId);
+    } else console.log("Some Error Occurred");
+    console.log("Game Id = ", data.gameId);
+
     setCreateDialogOpen(false);
     setName("");
   };
@@ -55,19 +62,19 @@ export default function HomePage() {
     e.preventDefault();
     console.log("[v0] Joining game with name:", name, "and game ID:");
 
-    const res = await fetch(
-      `http://localhost:8080/game/?gameId=${joinGameId}/join`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ player1Name: name }),
-      }
-    );
+    const res = await fetch(`http://localhost:8080/game/${joinGameId}/join`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ player2Name: name }),
+    });
 
     const data = await res.json();
+    console.log(data);
     if (data.success) setGameId(joinGameId);
+    setPlayer("player2", data.player2Id);
+
     // Handle join game logic here
     setJoinDialogOpen(false);
     setName("");
