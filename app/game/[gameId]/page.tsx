@@ -7,21 +7,18 @@ import Link from "next/link";
 import { useWebSocket } from "@/lib/context/webSocketContext";
 import { useGameIdStore, usePlayerStore } from "@/stores/store";
 
-// Sample character data - replace with actual images
-const characters = Array.from({ length: 24 }, (_, i) => ({
-  id: i + 1,
-  name: `Character ${i + 1}`,
-  image: `/placeholder.svg?height=120&width=120&query=quirky character ${
-    i + 1
-  }`,
-}));
+
 
 type ImageState = "normal" | "blurred" | "selected";
+type image = {
+  id:string
+  imageUrl: string,
+  imageName: string,
+  poolId:string
+}
 
 export default function GameDashboard() {
-  const [imageStates, setImageStates] = useState<Record<number, ImageState>>(
-    Object.fromEntries(characters.map((c) => [c.id, "normal"]))
-  );
+  
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [messages, setMessages] = useState<
     Array<{ text: string; sender: "user" | "opponent" }>
@@ -33,6 +30,10 @@ export default function GameDashboard() {
   const [isBothSelected, setIsBothSelected] = useState(false);
   const { gameId } = useGameIdStore();
   const { player } = usePlayerStore();
+  const [images, setImages] = useState<image[]>([]);
+  const [imageStates, setImageStates] = useState<Record<string, ImageState>>(
+    Object.fromEntries(images.map((image) => [image.id, "normal"]))
+  );
 
   const mySocket = useWebSocket();
 
@@ -73,6 +74,17 @@ export default function GameDashboard() {
     return () =>
       mySocket.socket?.removeEventListener("message", handleWebSocketMessage);
   }, []);
+
+  useEffect(() => {
+    fetch("http://localhost:8080/images/a2fc9a93-46ac-4ee7-b1a5-79ce23f148c9").then(res => {
+      res.json().then(data => {
+        setImages(data.images);
+        setImageStates(Object.fromEntries(images.map((image) => [image.id, "normal"])));
+      })
+    })
+  }, []);
+
+  
 
   const handleSelect = async (id: number, image: string) => {
     const type =
@@ -184,18 +196,19 @@ export default function GameDashboard() {
             {/* Image Grid */}
             <div className="flex-1 overflow-hidden">
               <div className="grid grid-cols-6 gap-3 auto-rows-fr h-full">
-                {characters.map((character) => {
-                  const state = imageStates[character.id];
-                  const isHovered = hoveredId === character.id;
+                {images.map((image:any) => {
+                  const state = imageStates[image.id];
+                  console.log(state)
+                  const isHovered = hoveredId === image.id;
                   const isGuessDisabled =
-                    guessedId !== null && guessedId !== character.id;
+                    guessedId !== null && guessedId !== image.id;
 
                   return (
                     <div
-                      key={character.id}
+                      key={image.id}
                       className="relative group"
                       onMouseEnter={() =>
-                        !isGuessDisabled && setHoveredId(character.id)
+                        !isGuessDisabled && setHoveredId(image.id)
                       }
                       onMouseLeave={() => setHoveredId(null)}
                     >
@@ -208,8 +221,8 @@ export default function GameDashboard() {
                         }`}
                       >
                         <img
-                          src={character.image || "/placeholder.svg"}
-                          alt={character.name}
+                          src={image.imageUrl || "/placeholder.svg"}
+                          alt={image.imageName}
                           className={`w-full h-full object-cover transition-all duration-300 ${
                             state === "blurred"
                               ? "blur-lg opacity-40"
@@ -224,14 +237,14 @@ export default function GameDashboard() {
                               <>
                                 <button
                                   onClick={() =>
-                                    handleGuess(character.id, character.image)
+                                    handleGuess(image.id, image.image)
                                   }
                                   className="text-xs font-black px-2 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all hover:scale-110 whitespace-nowrap"
                                 >
                                   👁️ Guess
                                 </button>
                                 <button
-                                  onClick={() => handlePass(character.id)}
+                                  onClick={() => handlePass(image.id)}
                                   className="text-xs font-black px-2 py-1 bg-destructive text-destructive-foreground rounded-lg hover:bg-destructive/90 transition-all hover:scale-110 flex items-center gap-1 justify-center"
                                   title="Skip"
                                 >
@@ -242,7 +255,7 @@ export default function GameDashboard() {
 
                             {state === "blurred" && (
                               <button
-                                onClick={() => handleRestore(character.id)}
+                                onClick={() => handleRestore(image.id)}
                                 className="text-xs font-black px-2 py-1 bg-accent text-accent-foreground rounded-lg hover:bg-accent/90 transition-all hover:scale-110 flex items-center gap-1 justify-center"
                                 title="Restore"
                               >
@@ -257,7 +270,7 @@ export default function GameDashboard() {
                               <>
                                 <button
                                   onClick={() =>
-                                    handleSelect(character.id, character.image)
+                                    handleSelect(image.id, image.imageUrl)
                                   }
                                   className="text-xs font-black px-2 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all hover:scale-110 whitespace-nowrap"
                                 >
