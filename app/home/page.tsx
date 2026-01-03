@@ -50,6 +50,7 @@ export default function HomePage() {
     if (data.success) {
       setGameId(data.gameId);
       setPlayer("player1", data.player1Id);
+      router.push(`game/${data.gameId}`);
       console.log("State Game id", gameId);
     } else console.log("Some Error Occurred");
     console.log("Game Id = ", data.gameId);
@@ -74,6 +75,8 @@ export default function HomePage() {
     console.log(data);
     if (data.success) setGameId(joinGameId);
     setPlayer("player2", data.player2Id);
+    router.push(`game/${joinGameId}`);
+
 
     // Handle join game logic here
     setJoinDialogOpen(false);

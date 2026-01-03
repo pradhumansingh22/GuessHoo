@@ -7,6 +7,17 @@ interface gameIdStore {
 }
 type player = "player1" | "player2" | "";
 
+export type ImageState = "normal" | "blurred" | "selected";
+
+interface imageSelectionStore {
+  isSelected: boolean;
+  isBothSelected: boolean;
+  selectedImageId: string;
+  setIsSelected: () => void;
+  setIsBothSelected: () => void;
+  setSelectedImageId: (id: string) => void;
+}
+
 interface playerStore {
   player: player;
   playerId: string;
@@ -31,5 +42,23 @@ export const usePlayerStore = create<playerStore>()(
       setPlayer: (player, playerId) => set({ player, playerId }),
     }),
     { name: "player-storage" }
+  )
+);
+
+export const useImageSelectionStore = create<imageSelectionStore>()(
+  persist(
+    (set) => ({
+      isBothSelected: false,
+      isSelected: false,
+      selectedImageId: "",
+      setIsBothSelected: () => {
+        set({ isBothSelected: true });
+      },
+      setIsSelected: () => {
+        set({ isSelected: true });
+      },
+      setSelectedImageId: (id) => set({ selectedImageId: id }),
+    }),
+    { name: "image-selection-store" }
   )
 );

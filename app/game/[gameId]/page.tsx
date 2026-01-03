@@ -5,29 +5,28 @@ import { Button } from "@/components/ui/button";
 import { Send, ArrowLeft, Copy, Check } from "lucide-react";
 import Link from "next/link";
 import { useWebSocket } from "@/lib/context/webSocketContext";
-import { useGameIdStore, usePlayerStore } from "@/stores/store";
+import {
+  useGameIdStore,
+  useImageSelectionStore,
+  usePlayerStore,
+} from "@/stores/store";
+import { ImageState } from "@/stores/store";
 
-
-
-type ImageState = "normal" | "blurred" | "selected";
 type image = {
-  id:string
-  imageUrl: string,
-  imageName: string,
-  poolId:string
-}
-
+  id: string;
+  imageUrl: string;
+  imageName: string;
+  poolId: string;
+};
 export default function GameDashboard() {
-  
   const [hoveredId, setHoveredId] = useState<number | null>(null);
   const [messages, setMessages] = useState<
     Array<{ text: string; sender: "user" | "opponent" }>
   >([{ text: "Good luck! 👀", sender: "opponent" }]);
   const [inputValue, setInputValue] = useState("");
-  const [guessedId, setGuessedId] = useState<number | null>(null);
+  const [guessedId, setGuessedId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [isSelected, setIsSelected] = useState(false);
-  const [isBothSelected, setIsBothSelected] = useState(false);
+  const { isSelected, isBothSelected, setIsBothSelected, setIsSelected } = useImageSelectionStore();
   const { gameId } = useGameIdStore();
   const { player } = usePlayerStore();
   const [images, setImages] = useState<image[]>([]);
@@ -50,10 +49,13 @@ export default function GameDashboard() {
   };
 
   const handleWebSocketMessage = async (event: MessageEvent) => {
+    console.log("yoo family");
     const data = await JSON.parse(event.data);
+    console.log(data);
     switch (data.type) {
       case "imageSelection":
-        setIsBothSelected(true);
+        setIsBothSelected();
+        console.log("Aya aya");
         break;
 
       case "chat":
@@ -73,28 +75,36 @@ export default function GameDashboard() {
     mySocket.socket?.addEventListener("message", handleWebSocketMessage);
     return () =>
       mySocket.socket?.removeEventListener("message", handleWebSocketMessage);
-  }, []);
+  }, [mySocket]);
 
   useEffect(() => {
-    fetch("http://localhost:8080/images/a2fc9a93-46ac-4ee7-b1a5-79ce23f148c9").then(res => {
-      res.json().then(data => {
+    fetch(
+      "http://localhost:8080/images/a2fc9a93-46ac-4ee7-b1a5-79ce23f148c9"
+    ).then((res) => {
+      res.json().then((data) => {
         setImages(data.images);
-        setImageStates(Object.fromEntries(images.map((image) => [image.id, "normal"])));
-      })
-    })
+
+        setImageStates(
+          Object.fromEntries(
+            data.images.map((image: image) => [image.id, "normal"])
+          )
+        );
+      });
+    });
   }, []);
 
-  
-
-  const handleSelect = async (id: number, image: string) => {
+  const handleSelect = async (id: string) => {
     const type =
       player == "player1"
         ? "selection1"
         : player == "player2"
         ? "selection2"
         : "";
-    mySocket.sendMessage(type, image);
-    setIsSelected(true);
+    mySocket.sendMessage(type, { imageId: id, gameId });
+    console.log("something", type, id, gameId);
+    setIsSelected();
+
+    console.log("Is Both selected: ", isBothSelected);
   };
 
   const handlePass = (id: number) => {
@@ -102,13 +112,15 @@ export default function GameDashboard() {
     setHoveredId(null);
   };
 
-  const handleGuess = (id: number, image: string) => {
+  const handleGuess = (id: string) => {
+
+    // Change this shii right here
     if (guessedId === null) {
       setImageStates((prev) => ({ ...prev, [id]: "selected" }));
       setGuessedId(id);
       setHoveredId(null);
 
-      sendWebSocketMessage("guess", { guessedImage: image });
+      sendWebSocketMessage("guess", { guessedImage: id });
     }
   };
 
@@ -180,10 +192,10 @@ export default function GameDashboard() {
             </Button>
           </Link>
           <h1 className="text-4xl font-black text-primary">
-            {isSelected
-              ? topTexts[1]
-              : isBothSelected
+            {isBothSelected
               ? topTexts[2]
+              : isSelected
+              ? topTexts[1]
               : topTexts[0]}
           </h1>
           <div className="w-10" />
@@ -196,9 +208,8 @@ export default function GameDashboard() {
             {/* Image Grid */}
             <div className="flex-1 overflow-hidden">
               <div className="grid grid-cols-6 gap-3 auto-rows-fr h-full">
-                {images.map((image:any) => {
+                {images.map((image: any) => {
                   const state = imageStates[image.id];
-                  console.log(state)
                   const isHovered = hoveredId === image.id;
                   const isGuessDisabled =
                     guessedId !== null && guessedId !== image.id;
@@ -237,7 +248,7 @@ export default function GameDashboard() {
                               <>
                                 <button
                                   onClick={() =>
-                                    handleGuess(image.id, image.image)
+                                    handleGuess(image.id)
                                   }
                                   className="text-xs font-black px-2 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all hover:scale-110 whitespace-nowrap"
                                 >
@@ -269,9 +280,7 @@ export default function GameDashboard() {
                             {state === "normal" && (
                               <>
                                 <button
-                                  onClick={() =>
-                                    handleSelect(image.id, image.imageUrl)
-                                  }
+                                  onClick={() => handleSelect(image.id)}
                                   className="text-xs font-black px-2 py-1 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-all hover:scale-110 whitespace-nowrap"
                                 >
                                   👆 Select
